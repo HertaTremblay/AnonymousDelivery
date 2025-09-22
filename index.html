@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anonymous Delivery Network</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔒</text></svg>">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+    <script>
+        // Fallback ethers CDN
+        if (typeof ethers === 'undefined') {
+            document.write('<script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"><\/script>');
+        }
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            color: white;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .panel {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .panel h2 {
+            margin-bottom: 20px;
+            color: #fff;
+            font-size: 1.5em;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+            font-size: 16px;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            border-left: 4px solid #00d4aa;
+        }
+
+        .delivery-list {
+            grid-column: 1 / -1;
+        }
+
+        .delivery-item {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .delivery-item h3 {
+            color: #00d4aa;
+            margin-bottom: 10px;
+        }
+
+        .delivery-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .info-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        .info-label {
+            font-size: 0.9em;
+            opacity: 0.8;
+            margin-bottom: 5px;
+        }
+
+        .info-value {
+            font-weight: 500;
+        }
+
+        .privacy-badge {
+            display: inline-block;
+            background: linear-gradient(45deg, #00d4aa, #007b5e);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        .connection-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+
+        .preset-item {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .preset-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(0, 212, 170, 0.5);
+        }
+
+        .preset-item.selected {
+            border-color: #00d4aa;
+            background: rgba(0, 212, 170, 0.1);
+        }
+
+        .preset-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .preset-title {
+            font-weight: 600;
+            color: #00d4aa;
+        }
+
+        .preset-fee {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 0.8em;
+            font-weight: 600;
+        }
+
+        .preset-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            font-size: 0.9em;
+        }
+
+        .preset-detail {
+            opacity: 0.8;
+        }
+
+        .preset-description {
+            margin-top: 10px;
+            font-style: italic;
+            opacity: 0.7;
+            font-size: 0.9em;
+        }
+
+        .checkbox-container {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+        }
+
+        .checkbox-container input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            accent-color: #00d4aa;
+        }
+
+        .wallet-connect-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .wallet-connect-modal {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            width: 90%;
+        }
+
+        .wallet-connect-modal h2 {
+            margin-bottom: 20px;
+            color: #fff;
+            font-size: 1.8em;
+        }
+
+        .wallet-connect-modal p {
+            margin-bottom: 30px;
+            opacity: 0.9;
+            font-size: 1.1em;
+            line-height: 1.5;
+        }
+
+        .connect-btn {
+            background: linear-gradient(45deg, #00d4aa, #007b5e);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 30px;
+            font-size: 1.2em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 30px;
+        }
+
+        .connect-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 212, 170, 0.3);
+        }
+
+        .network-info {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .network-info p {
+            margin: 8px 0;
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+
+        .network-info strong {
+            color: #00d4aa;
+        }
+
+        .connected {
+            background: linear-gradient(45deg, #00d4aa, #007b5e);
+            color: white;
+        }
+
+        .disconnected {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+
+            .header h1 {
+                font-size: 2em;
+            }
+
+            .container {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="connection-status" id="connectionStatus">
+        <span id="statusText">Disconnected</span>
+    </div>
+
+    <div class="wallet-connect-overlay" id="walletOverlay" style="display: none;">
+        <div class="wallet-connect-modal">
+            <h2>🔗 Connect to Sepolia Network</h2>
+            <p>Connect your MetaMask wallet to start using Anonymous Delivery Network</p>
+            <button class="btn connect-btn" id="connectWalletBtn">
+                🦊 Connect MetaMask
+            </button>
+            <div class="network-info">
+                <p><strong>Network:</strong> Sepolia Test Network</p>
+                <p><strong>Chain ID:</strong> 11155111 (0xaa36a7)</p>
+                <p><strong>Contract:</strong> 0x6A959E813D95B911b75D9A307532eF3316e87304</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>🔒 Anonymous Delivery Network</h1>
+            <p>Secure, Private, and Encrypted Package Delivery System</p>
+        </div>
+
+        <div class="main-content">
+            <div class="panel">
+                <h2>📦 Create Delivery Request</h2>
+                <form id="deliveryForm">
+                    <div class="form-group">
+                        <label for="packageType">Package Type:</label>
+                        <select id="packageType" required>
+                            <option value="">Select package type</option>
+                            <option value="document">Document</option>
+                            <option value="small_package">Small Package</option>
+                            <option value="medium_package">Medium Package</option>
+                            <option value="fragile">Fragile Item</option>
+                            <option value="express">Express Delivery</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="priority">Priority Level:</label>
+                        <select id="priority" required>
+                            <option value="">Select priority</option>
+                            <option value="low">Low Priority</option>
+                            <option value="medium">Medium Priority</option>
+                            <option value="high">High Priority</option>
+                            <option value="urgent">Urgent</option>
+                        </select>
+                    </div>
+
+
+                    <button type="submit" class="btn" id="createDeliveryBtn">
+                        🔐 Create Encrypted Delivery Request
+                    </button>
+                </form>
+            </div>
+
+            <div class="panel">
+                <h2>🚛 Delivery Management</h2>
+
+                <div class="form-group">
+                    <label for="deliveryId">Delivery ID:</label>
+                    <input type="text" id="deliveryId" placeholder="Enter delivery ID to track">
+                </div>
+
+                <button class="btn" id="trackDeliveryBtn">
+                    📍 Track Delivery
+                </button>
+
+                <button class="btn" id="acceptDeliveryBtn">
+                    ✅ Accept Delivery (Courier)
+                </button>
+
+                <button class="btn" id="completeDeliveryBtn">
+                    🏁 Complete Delivery
+                </button>
+
+                <div class="status" id="deliveryStatus" style="display: none;">
+                    <h3>Delivery Status</h3>
+                    <div id="statusDetails"></div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>🎯 Preset Delivery Templates</h2>
+                <p style="opacity: 0.9; margin-bottom: 20px;">Select preset deliveries and deploy them to the blockchain instantly</p>
+
+                <div id="presetList">
+                    <!-- Preset deliveries will be loaded here -->
+                </div>
+
+                <div style="margin-top: 20px; text-align: center;">
+                    <button class="btn" id="selectAllBtn" style="width: auto; margin-right: 10px;">
+                        ✅ Select All
+                    </button>
+                    <button class="btn" id="clearAllBtn" style="width: auto; margin-right: 10px;">
+                        ❌ Clear All
+                    </button>
+                    <button class="btn" id="deploySelectedBtn" disabled>
+                        🚀 Deploy Selected to Blockchain
+                    </button>
+                    <p style="font-size: 0.9em; opacity: 0.7; margin-top: 10px;">
+                        Selected: <span id="selectedCount">0</span> deliveries
+                    </p>
+                </div>
+            </div>
+
+            <div class="panel delivery-list">
+                <h2>📋 Active Deliveries</h2>
+                <div id="deliveriesList">
+                    <p style="text-align: center; opacity: 0.7; padding: 40px;">
+                        No active deliveries found. Create a delivery request to get started.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Contract Configuration
+        const CONTRACT_ADDRESS = "0x6A959E813D95B911b75D9A307532eF3316e87304"
+        const CONTRACT_ABI = [
+            "function createDelivery(string packageType, string priority, uint8 isUrgent) external",
+            "function acceptDelivery(uint256 deliveryId, uint8 acceptance) external",
+            "function completeDelivery(uint256 deliveryId, uint8 completion) external",
+            "function getDelivery(uint256 deliveryId) external view returns (tuple(uint256 id, address sender, address courier, string packageType, uint8 status, uint256 timestamp))",
+            "function getActiveDeliveries() external view returns (uint256[])",
+            "function submitDeliveryUpdate(uint8 status) external returns (bool)",
+            "event DeliveryCreated(uint256 indexed id, address indexed sender)",
+            "event DeliveryAccepted(uint256 indexed id, address indexed courier)",
+            "event DeliveryCompleted(uint256 indexed id)"
+        ];
+
+        // Application State
+        let provider = null;
+        let signer = null;
+        let contract = null;
+        let userAccount = null;
+        let selectedPresets = new Set();
+
+        // Preset Delivery Data
+        const PRESET_DELIVERIES = [
+            {
+                id: 1,
+                packageType: "document",
+                priority: "urgent",
+                isUrgent: true,
+                description: "Legal Document - Contract Signing",
+                estimatedFee: "5000"
+            },
+            {
+                id: 2,
+                packageType: "small_package",
+                priority: "high",
+                isUrgent: false,
+                description: "Electronics - Smartphone",
+                estimatedFee: "3000"
+            },
+            {
+                id: 3,
+                packageType: "medium_package",
+                priority: "medium",
+                isUrgent: false,
+                description: "Books - University Textbooks",
+                estimatedFee: "2000"
+            },
+            {
+                id: 4,
+                packageType: "fragile",
+                priority: "high",
+                isUrgent: false,
+                description: "Artwork - Ceramic Vase",
+                estimatedFee: "3000"
+            },
+            {
+                id: 5,
+                packageType: "express",
+                priority: "urgent",
+                isUrgent: true,
+                description: "Medical Supplies - Emergency",
+                estimatedFee: "5000"
+            },
+            {
+                id: 6,
+                packageType: "document",
+                priority: "medium",
+                isUrgent: false,
+                description: "Business Papers - Financial Report",
+                estimatedFee: "2000"
+            },
+            {
+                id: 7,
+                packageType: "small_package",
+                priority: "low",
+                isUrgent: false,
+                description: "Gift Package - Birthday Present",
+                estimatedFee: "1000"
+            },
+            {
+                id: 8,
+                packageType: "medium_package",
+                priority: "high",
+                isUrgent: false,
+                description: "Computer Parts - Gaming Components",
+                estimatedFee: "3000"
+            }
+        ];
+
+        // Initialize Application
+        async function init() {
+            try {
+                // Check if ethers is loaded
+                if (typeof ethers === 'undefined') {
+                    console.error('Ethers.js failed to load');
+                    updateConnectionStatus(false, 'Library loading failed');
+                    return;
+                }
+
+                // Load preset deliveries first
+                loadPresetDeliveries();
+
+                // Check MetaMask availability
+                if (typeof window.ethereum !== 'undefined') {
+                    // Show connection modal
+                    showWalletConnectModal();
+
+                    // Listen for account changes
+                    window.ethereum.on('accountsChanged', handleAccountsChanged);
+                    window.ethereum.on('chainChanged', handleChainChanged);
+                } else {
+                    updateConnectionStatus(false, 'MetaMask not detected - Please install MetaMask');
+                    showWalletConnectModal();
+                }
+
+            } catch (error) {
+                console.error('Initialization error:', error);
+                updateConnectionStatus(false, 'Initialization failed');
+            }
+        }
+
+        // Show Wallet Connect Modal
+        function showWalletConnectModal() {
+            document.getElementById('walletOverlay').style.display = 'flex';
+        }
+
+        // Hide Wallet Connect Modal
+        function hideWalletConnectModal() {
+            document.getElementById('walletOverlay').style.display = 'none';
+        }
+
+        // Handle Account Changes
+        function handleAccountsChanged(accounts) {
+            if (accounts.length === 0) {
+                console.log('Wallet disconnected');
+                showWalletConnectModal();
+                updateConnectionStatus(false, 'Wallet disconnected');
+            } else {
+                console.log('Account changed, reconnecting...');
+                connectWallet();
+            }
+        }
+
+        // Handle Chain Changes
+        function handleChainChanged(chainId) {
+            console.log('Chain changed to:', chainId);
+            window.location.reload(); // Reload the page to reset state
+        }
+
+        // Wait for page to load and ethers to be available
+        function waitForEthers() {
+            if (typeof ethers !== 'undefined') {
+                init();
+            } else {
+                console.log('Waiting for ethers.js to load...');
+                setTimeout(waitForEthers, 100);
+            }
+        }
+
+        // Load Preset Deliveries
+        function loadPresetDeliveries() {
+            const presetList = document.getElementById('presetList');
+            let html = '';
+
+            PRESET_DELIVERIES.forEach(preset => {
+                const priorityEmoji = preset.priority === 'urgent' ? '🔥' :
+                                    preset.priority === 'high' ? '⚡' :
+                                    preset.priority === 'medium' ? '📦' : '📋';
+
+                const packageEmoji = preset.packageType === 'document' ? '📄' :
+                                   preset.packageType === 'fragile' ? '🏺' :
+                                   preset.packageType === 'express' ? '🚀' : '📦';
+
+                html += `
+                    <div class="preset-item" data-preset-id="${preset.id}">
+                        <div class="checkbox-container">
+                            <input type="checkbox" id="preset-${preset.id}" onchange="togglePresetSelection(${preset.id})">
+                        </div>
+                        <div class="preset-header">
+                            <div class="preset-title">${packageEmoji} ${preset.packageType.replace('_', ' ').toUpperCase()}</div>
+                            <div class="preset-fee">💰 ${preset.estimatedFee} wei</div>
+                        </div>
+                        <div class="preset-details">
+                            <div class="preset-detail">${priorityEmoji} Priority: ${preset.priority}</div>
+                            <div class="preset-detail">⚡ Urgent: ${preset.isUrgent ? 'Yes' : 'No'}</div>
+                        </div>
+                        <div class="preset-description">${preset.description}</div>
+                    </div>
+                `;
+            });
+
+            presetList.innerHTML = html;
+        }
+
+        // Toggle Preset Selection
+        function togglePresetSelection(presetId) {
+            const checkbox = document.getElementById(`preset-${presetId}`);
+            const presetItem = document.querySelector(`[data-preset-id="${presetId}"]`);
+
+            if (checkbox.checked) {
+                selectedPresets.add(presetId);
+                presetItem.classList.add('selected');
+            } else {
+                selectedPresets.delete(presetId);
+                presetItem.classList.remove('selected');
+            }
+
+            updateSelectedCount();
+        }
+
+        // Update Selected Count
+        function updateSelectedCount() {
+            const count = selectedPresets.size;
+            document.getElementById('selectedCount').textContent = count;
+            document.getElementById('deploySelectedBtn').disabled = count === 0;
+        }
+
+        // Sepolia Network Configuration
+        const SEPOLIA_NETWORK = {
+            chainId: '0xaa36a7', // 11155111 in decimal
+            chainName: 'Sepolia Test Network',
+            nativeCurrency: {
+                name: 'SepoliaETH',
+                symbol: 'SepoliaETH',
+                decimals: 18
+            },
+            rpcUrls: ['https://sepolia.infura.io/v3/'],
+            blockExplorerUrls: ['https://sepolia.etherscan.io/']
+        };
+
+        // Connect Wallet with Enhanced Flow
+        async function connectWallet() {
+            try {
+                console.log('🔄 Starting wallet connection process...');
+
+                // Step 1: Detect MetaMask
+                if (typeof window.ethereum === 'undefined') {
+                    throw new Error('MetaMask not detected. Please install MetaMask.');
+                }
+
+                // Step 2: Request Account Access
+                updateConnectionStatus(false, 'Requesting access...');
+                await window.ethereum.request({ method: 'eth_requestAccounts' });
+
+                // Step 3: Network Verification & Switch
+                await ensureSepoliaNetwork();
+
+                // Step 4: Provider Setup
+                provider = new ethers.providers.Web3Provider(window.ethereum);
+                signer = provider.getSigner();
+                userAccount = await signer.getAddress();
+
+                // Step 5: Contract Initialization
+                contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+
+                // Step 6: Success Handling
+                updateConnectionStatus(true, `Connected: ${userAccount.slice(0, 6)}...${userAccount.slice(-4)}`);
+                console.log('✅ Connected to Sepolia successfully!');
+
+                // Step 7: Hide modal and load initial state
+                hideWalletConnectModal();
+                loadActiveDeliveries();
+
+            } catch (error) {
+                console.error('❌ Wallet connection error:', error);
+                updateConnectionStatus(false, error.message || 'Connection failed');
+            }
+        }
+
+        // Ensure Sepolia Network Connection
+        async function ensureSepoliaNetwork() {
+            try {
+                updateConnectionStatus(false, 'Verifying network...');
+
+                // Check current network
+                const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+                console.log('Current chain ID:', chainId);
+
+                if (chainId !== SEPOLIA_NETWORK.chainId) {
+                    console.log('🔄 Switching to Sepolia network...');
+                    updateConnectionStatus(false, 'Switching to Sepolia...');
+
+                    try {
+                        // Try to switch to Sepolia
+                        await window.ethereum.request({
+                            method: 'wallet_switchEthereumChain',
+                            params: [{ chainId: SEPOLIA_NETWORK.chainId }]
+                        });
+                        console.log('✅ Successfully switched to Sepolia');
+                    } catch (switchError) {
+                        // If Sepolia is not added, add it
+                        if (switchError.code === 4902) {
+                            console.log('➕ Adding Sepolia network...');
+                            updateConnectionStatus(false, 'Adding Sepolia network...');
+
+                            await window.ethereum.request({
+                                method: 'wallet_addEthereumChain',
+                                params: [SEPOLIA_NETWORK]
+                            });
+                            console.log('✅ Sepolia network added successfully');
+                        } else {
+                            throw switchError;
+                        }
+                    }
+                } else {
+                    console.log('✅ Already on Sepolia network');
+                }
+            } catch (error) {
+                console.error('❌ Network setup error:', error);
+                throw new Error('Failed to connect to Sepolia network');
+            }
+        }
+
+        // Update Connection Status
+        function updateConnectionStatus(connected, message) {
+            const statusElement = document.getElementById('connectionStatus');
+            const statusText = document.getElementById('statusText');
+
+            statusElement.className = `connection-status ${connected ? 'connected' : 'disconnected'}`;
+            statusText.textContent = message;
+        }
+
+        // Deploy Selected Presets to Blockchain
+        async function deploySelectedPresets() {
+            if (!contract) {
+                alert('Please connect your wallet first');
+                return;
+            }
+
+            if (selectedPresets.size === 0) {
+                alert('Please select at least one preset delivery');
+                return;
+            }
+
+            const deployBtn = document.getElementById('deploySelectedBtn');
+            const originalText = deployBtn.textContent;
+
+            try {
+                deployBtn.disabled = true;
+                deployBtn.textContent = '🚀 Deploying to Blockchain...';
+
+                let successCount = 0;
+                let failureCount = 0;
+                const selectedPresetsArray = Array.from(selectedPresets);
+
+                for (let i = 0; i < selectedPresetsArray.length; i++) {
+                    const presetId = selectedPresetsArray[i];
+                    const preset = PRESET_DELIVERIES.find(p => p.id === presetId);
+
+                    if (!preset) continue;
+
+                    try {
+                        deployBtn.textContent = `🚀 Deploying ${i + 1}/${selectedPresetsArray.length}...`;
+
+                        // Convert boolean to uint8 for FHE contract
+                        const isUrgent = preset.isUrgent ? 1 : 0;
+
+                        const tx = await contract.createDelivery(
+                            preset.packageType,
+                            preset.priority,
+                            isUrgent
+                        );
+
+                        // Wait for transaction confirmation
+                        await tx.wait();
+                        successCount++;
+
+                        console.log(`✅ Deployed preset #${preset.id}: ${preset.description}`);
+
+                        // Add small delay between transactions to avoid nonce issues
+                        if (i < selectedPresetsArray.length - 1) {
+                            await new Promise(resolve => setTimeout(resolve, 1000));
+                        }
+
+                    } catch (error) {
+                        console.error(`❌ Failed to deploy preset #${preset.id}:`, error);
+                        failureCount++;
+                    }
+                }
+
+                // Show deployment results
+                const resultMessage = `🎉 Deployment Complete!\n✅ Success: ${successCount}\n❌ Failed: ${failureCount}`;
+                alert(resultMessage);
+
+                // Clear selections and refresh
+                clearAllSelections();
+                loadActiveDeliveries();
+
+            } catch (error) {
+                console.error('Batch deployment error:', error);
+                alert('❌ Failed to deploy preset deliveries');
+            } finally {
+                deployBtn.disabled = selectedPresets.size === 0;
+                deployBtn.textContent = originalText;
+            }
+        }
+
+        // Select All Presets
+        function selectAllPresets() {
+            PRESET_DELIVERIES.forEach(preset => {
+                const checkbox = document.getElementById(`preset-${preset.id}`);
+                const presetItem = document.querySelector(`[data-preset-id="${preset.id}"]`);
+
+                if (checkbox && !checkbox.checked) {
+                    checkbox.checked = true;
+                    selectedPresets.add(preset.id);
+                    if (presetItem) presetItem.classList.add('selected');
+                }
+            });
+
+            updateSelectedCount();
+        }
+
+        // Clear All Selections
+        function clearAllSelections() {
+            selectedPresets.clear();
+
+            // Uncheck all checkboxes and remove selected styling
+            PRESET_DELIVERIES.forEach(preset => {
+                const checkbox = document.getElementById(`preset-${preset.id}`);
+                const presetItem = document.querySelector(`[data-preset-id="${preset.id}"]`);
+
+                if (checkbox) checkbox.checked = false;
+                if (presetItem) presetItem.classList.remove('selected');
+            });
+
+            updateSelectedCount();
+        }
+
+        // Create Delivery Request (Single)
+        async function createDelivery(packageType, priority) {
+            if (!contract) {
+                alert('Please connect your wallet first');
+                return;
+            }
+
+            try {
+                // Convert boolean to uint8 for FHE contract (0 = false, 1 = true)
+                const isUrgent = priority === 'urgent' ? 1 : 0;
+
+                const tx = await contract.createDelivery(
+                    packageType,
+                    priority,
+                    isUrgent
+                );
+
+                document.getElementById('createDeliveryBtn').disabled = true;
+                document.getElementById('createDeliveryBtn').textContent = '⏳ Creating delivery...';
+
+                await tx.wait();
+
+                alert('🎉 Delivery request created successfully!');
+                document.getElementById('deliveryForm').reset();
+                loadActiveDeliveries();
+
+            } catch (error) {
+                console.error('Create delivery error:', error);
+                alert('❌ Failed to create delivery request');
+            } finally {
+                document.getElementById('createDeliveryBtn').disabled = false;
+                document.getElementById('createDeliveryBtn').textContent = '🔐 Create Encrypted Delivery Request';
+            }
+        }
+
+        // Accept Delivery
+        async function acceptDelivery(deliveryId) {
+            if (!contract) {
+                alert('Please connect your wallet first');
+                return;
+            }
+
+            try {
+                // Convert boolean to uint8 for FHE contract (1 = true/accept)
+                const tx = await contract.acceptDelivery(parseInt(deliveryId), 1);
+                await tx.wait();
+
+                alert('✅ Delivery accepted successfully!');
+                loadActiveDeliveries();
+
+            } catch (error) {
+                console.error('Accept delivery error:', error);
+                alert('❌ Failed to accept delivery');
+            }
+        }
+
+        // Complete Delivery
+        async function completeDelivery(deliveryId) {
+            if (!contract) {
+                alert('Please connect your wallet first');
+                return;
+            }
+
+            try {
+                // Convert boolean to uint8 for FHE contract (1 = true/complete)
+                const tx = await contract.completeDelivery(parseInt(deliveryId), 1);
+                await tx.wait();
+
+                alert('🏁 Delivery completed successfully!');
+                loadActiveDeliveries();
+
+            } catch (error) {
+                console.error('Complete delivery error:', error);
+                alert('❌ Failed to complete delivery');
+            }
+        }
+
+        // Track Delivery
+        async function trackDelivery(deliveryId) {
+            if (!contract) {
+                alert('Please connect your wallet first');
+                return;
+            }
+
+            try {
+                const delivery = await contract.getDelivery(parseInt(deliveryId));
+                displayDeliveryStatus(delivery);
+
+            } catch (error) {
+                console.error('Track delivery error:', error);
+                alert('❌ Delivery not found');
+            }
+        }
+
+        // Display Delivery Status
+        function displayDeliveryStatus(delivery) {
+            const statusDiv = document.getElementById('deliveryStatus');
+            const detailsDiv = document.getElementById('statusDetails');
+
+            const statusNames = ['Created', 'Accepted', 'In Transit', 'Delivered'];
+            const statusName = statusNames[delivery.status] || 'Unknown';
+
+            detailsDiv.innerHTML = `
+                <div class="delivery-info">
+                    <div class="info-item">
+                        <div class="info-label">Delivery ID</div>
+                        <div class="info-value">#${delivery.id}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Status</div>
+                        <div class="info-value">${statusName}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Package Type</div>
+                        <div class="info-value">${delivery.packageType}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Sender</div>
+                        <div class="info-value">${delivery.sender.slice(0, 6)}...${delivery.sender.slice(-4)}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Courier</div>
+                        <div class="info-value">${delivery.courier === '0x0000000000000000000000000000000000000000' ? 'Not assigned' : delivery.courier.slice(0, 6) + '...' + delivery.courier.slice(-4)}</div>
+                    </div>
+                </div>
+            `;
+
+            statusDiv.style.display = 'block';
+        }
+
+        // Load Active Deliveries
+        async function loadActiveDeliveries() {
+            if (!contract) return;
+
+            try {
+                const deliveryIds = await contract.getActiveDeliveries();
+                const deliveriesDiv = document.getElementById('deliveriesList');
+
+                if (deliveryIds.length === 0) {
+                    deliveriesDiv.innerHTML = `
+                        <p style="text-align: center; opacity: 0.7; padding: 40px;">
+                            No active deliveries found. Create a delivery request to get started.
+                        </p>
+                    `;
+                    return;
+                }
+
+                let html = '';
+
+                for (const id of deliveryIds) {
+                    try {
+                        const delivery = await contract.getDelivery(id);
+                        const statusNames = ['Created', 'Accepted', 'In Transit', 'Delivered'];
+                        const statusName = statusNames[delivery.status] || 'Unknown';
+
+                        html += `
+                            <div class="delivery-item">
+                                <h3>Delivery #${id} <span class="privacy-badge">🔐 Encrypted</span></h3>
+                                <div class="delivery-info">
+                                    <div class="info-item">
+                                        <div class="info-label">Status</div>
+                                        <div class="info-value">${statusName}</div>
+                                    </div>
+                                    <div class="info-item">
+                                        <div class="info-label">Package Type</div>
+                                        <div class="info-value">${delivery.packageType}</div>
+                                    </div>
+                                    <div class="info-item">
+                                        <div class="info-label">Sender</div>
+                                        <div class="info-value">${delivery.sender.slice(0, 6)}...${delivery.sender.slice(-4)}</div>
+                                    </div>
+                                    <div class="info-item">
+                                        <div class="info-label">Courier</div>
+                                        <div class="info-value">${delivery.courier === '0x0000000000000000000000000000000000000000' ? 'Not assigned' : delivery.courier.slice(0, 6) + '...' + delivery.courier.slice(-4)}</div>
+                                    </div>
+                                </div>
+                                <div style="margin-top: 15px;">
+                                    <button class="btn" onclick="trackDelivery(${id})" style="width: auto; margin-right: 10px;">📍 Track</button>
+                                    ${delivery.status === 0 ? `<button class="btn" onclick="acceptDelivery(${id})" style="width: auto; margin-right: 10px;">✅ Accept</button>` : ''}
+                                    ${delivery.status === 1 ? `<button class="btn" onclick="completeDelivery(${id})" style="width: auto;">🏁 Complete</button>` : ''}
+                                </div>
+                            </div>
+                        `;
+                    } catch (err) {
+                        console.error(`Error loading delivery ${id}:`, err);
+                    }
+                }
+
+                deliveriesDiv.innerHTML = html;
+
+            } catch (error) {
+                console.error('Load deliveries error:', error);
+            }
+        }
+
+        // Event Listeners
+        document.getElementById('deliveryForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const packageType = document.getElementById('packageType').value;
+            const priority = document.getElementById('priority').value;
+
+            if (!packageType || !priority) {
+                alert('Please fill in all required fields');
+                return;
+            }
+
+            await createDelivery(packageType, priority);
+        });
+
+        document.getElementById('trackDeliveryBtn').addEventListener('click', async () => {
+            const deliveryId = document.getElementById('deliveryId').value;
+            if (!deliveryId) {
+                alert('Please enter a delivery ID');
+                return;
+            }
+            await trackDelivery(deliveryId);
+        });
+
+        document.getElementById('acceptDeliveryBtn').addEventListener('click', async () => {
+            const deliveryId = document.getElementById('deliveryId').value;
+            if (!deliveryId) {
+                alert('Please enter a delivery ID');
+                return;
+            }
+            await acceptDelivery(deliveryId);
+        });
+
+        document.getElementById('completeDeliveryBtn').addEventListener('click', async () => {
+            const deliveryId = document.getElementById('deliveryId').value;
+            if (!deliveryId) {
+                alert('Please enter a delivery ID');
+                return;
+            }
+            await completeDelivery(deliveryId);
+        });
+
+        document.getElementById('deploySelectedBtn').addEventListener('click', async () => {
+            await deploySelectedPresets();
+        });
+
+        document.getElementById('selectAllBtn').addEventListener('click', () => {
+            selectAllPresets();
+        });
+
+        document.getElementById('clearAllBtn').addEventListener('click', () => {
+            clearAllSelections();
+        });
+
+        document.getElementById('connectWalletBtn').addEventListener('click', async () => {
+            await connectWallet();
+        });
+
+        // Auto-refresh deliveries every 30 seconds
+        setInterval(() => {
+            if (contract) {
+                loadActiveDeliveries();
+            }
+        }, 30000);
+
+        // Initialize on page load
+        window.addEventListener('load', waitForEthers);
+    </script>
+</body>
+</html>

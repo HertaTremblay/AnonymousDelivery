@@ -1,0 +1,33 @@
+{
+  "name": "anonymous-delivery-network",
+  "version": "1.0.0",
+  "description": "Anonymous Delivery Network with FHE encryption",
+  "main": "index.html",
+  "scripts": {
+    "compile": "cross-env npx hardhat compile",
+    "deploy": "cross-env npx hardhat run scripts/deploy.ts --network zama",
+    "deploy:sepolia": "cross-env npx hardhat run scripts/deploy.ts --network sepolia",
+    "test": "cross-env npx hardhat test",
+    "serve": "npx http-server . -p 3000 -c-1 --cors"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^3.0.0",
+    "@types/node": "^20.0.0",
+    "cross-env": "^7.0.3",
+    "hardhat": "^2.24.3",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@fhevm/hardhat-plugin": "^0.0.1-3",
+    "@fhevm/solidity": "^0.7.0"
+  },
+  "keywords": [
+    "blockchain",
+    "privacy",
+    "delivery",
+    "fhe",
+    "anonymous"
+  ],
+  "author": "",
+  "license": "MIT"
+}
